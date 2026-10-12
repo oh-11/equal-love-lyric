@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>＝LOVE 「24/7」 自動同期プレイヤー</title>
+    <style>
+        body {
+            background-color: #08080c;
+            color: #ffffff;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 📺 YouTube動画プレイヤーのエリア */
+        #player-container {
+            margin-top: 20px;
+            margin-bottom: 25px;
+            border: 3px solid #ff3377;
+            border-radius: 8px;
+            overflow: hidden;
+            width: 320px;
+            height: 180px;
+            background-color: #000000;
+        }
+
+        /* 🎵 歌詞の表示エリア */
+        .lyrics-container {
+            width: 90%;
+            height: 45vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+        }
+
+        .lyrics-track {
+            transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .line {
+            font-size: 30px;
+            font-weight: bold;
+            color: #333344;
+            margin: 22px 0;
+            text-align: center;
+            transition: all 0.25s ease;
+            width: 100%;
+        }
+
+        /* ⭐ 自動同期で選択されている行のドデカピンク設定 */
+        .line.active {
+            font-size: 56px;
+            color: #ff3377;
+            text-shadow: 0 0 25px rgba(255, 51, 119, 0.8);
+            transform: scale(1.05);
+        }
+
+        .info-tip {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+            background: #111;
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. YouTube埋め込みエリア（自動同期用の専用IDに修正） -->
+    <div id="player-container">
+        <div id="yt-player"></div>
+    </div>
+
+    <!-- 2. カスタム歌詞エリア -->
+    <div class="lyrics-container">
+        <div class="lyrics-track" id="track"></div>
+    </div>
+
+    <div class="info-tip">
+        【自動同期モード】<br>
+        上のYouTubeで曲を再生すると、自動的に歌のタイミングに合わせて歌詞が流れます。
+    </div>
+
+    <script>
+        // 📜 タイミング（秒数）付きの歌詞データ
+        const lrcData = [
+            { time: 0, text: "24/7" },
+            { time: 2, text: "＝LOVE" },
+            { time: 17, text: "知らない私 靡く" },
+            { time: 21, text: "染めたの 髪" },
+            { time: 23, text: "「似合うと思った」" },
+            { time: 26, text: "やっぱり、そう思うでしょ？" },
+            { time: 30, text: "もう一度なんて" },
+            { time: 32, text: "約束じゃ ほら、物足りないから" },
+            { time: 37, text: "もっと美しく" },
+            { time: 39, text: "感じています いつだって" },
+            { time: 43, text: "アトは君が引くだけ" },
+            { time: 46, text: "私だって、いいの" },
+            { time: 49, text: "抱きしめるくらいに 掴んでいて" },
+            { time: 54, text: "（24/7...）" },
+            { time: 61, text: "ちっちゃく 抱きしめて終わり" },
+            { time: 65, text: "それじゃ足りないから" },
+            { time: 68, text: "キスして すぐに" },
+            { time: 70, text: "もう1回 ベイビー" },
+            { time: 72, text: "もう足りなくなる 君の中" },
+            { time: 76, text: "1番長い私で" },
+            { time: 79, text: "それだけでもう 求めちゃって" },
+            { time: 83, text: "いつだって愛につなぎ止めて" },
+            { time: 87, text: "ずっと、ねえ 離さないで" },
+            { time: 91, text: "私たち最高にゴリゴリ" },
+            { time: 96, text: "Yeah 足りてない" },
+            { time: 102, text: "ライトに強めで" },
+            { time: 105, text: "今までと違うでしょ ほら" },
+            { time: 109, text: "もっと近くに来て" },
+            { time: 114, text: "BPM 乱れてく" },
+            { time: 117, text: "コアは君だけ" },
+            { time: 119, text: "私どっちだっていいの" },
+            { time: 122, text: "ねえ、抱きしめるくらいに 掴んでいて" },
+            { time: 126, text: "（24/7...）" },
+            { time: 133, text: "準備してる ライトにいくよ" },
+            { time: 137, text: "見つけて 24/7" },
+            { time: 140, text: "スペシャルに溶けちゃって" },
+            { time: 144, text: "見せつける 2人で" },
+            { time: 147, text: "ずっと ずっと..." },
+            { time: 155, text: "[Outro]" }
+        ];
+
+        // 歌詞の画面生成
+        const track = document.getElementById('track');
+        lrcData.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'line';
+            div.innerText = item.text;
+            track.appendChild(div);
+        });
+        const lines = document.querySelectorAll('.line');
+
+        // 📺 YouTubeの自動コントロールプログラムを読み込む
+        const tag = document.createElement('script');
+        tag.src = "https://youtube.com";
+        document.head.appendChild(tag);
+
+        let player;
+        window.onYouTubeIframeAPIReady = function() {
+            player = new YT.Player('yt-player', {
+                height: '100%',
+                width: '100%',
+                videoId: 'PsjObn3dqNk', // ＝LOVE 24/7の通常MVのID
+                playerVars: {
+                    'playsinline': 1,
+                    'rel': 0,
+                    'controls': 1
+                },
+                events: {
+                    'onReady': onPlayerReady
+                }
+            });
+        };
+
+        // 動画の再生秒数を監視して歌詞を自動で進める仕組み
+        function onPlayerReady(event) {
+            setInterval(() => {
+                if (player && player.getCurrentTime) {
+                    const currentTime = player.getCurrentTime();
+                    
+                    let activeIndex = 0;
+                    for (let i = 0; i < lrcData.length; i++) {
+                        if (currentTime >= lrcData[i].time) {
+                            activeIndex = i;
+                        } else {
+                            break;
+                        }
+                    }
+                    updateLyricsPosition(activeIndex);
+                }
+            }, 100);
+        }
+
+        function updateLyricsPosition(index) {
+            lines.forEach((line, i) => {
+                if (i === index) {
+                    line.classList.add('active');
+                } else {
+                    line.classList.remove('active');
+                }
+            });
+
+            const activeLine = lines[index];
+            const containerHeight = document.querySelector('.lyrics-container').clientHeight;
+            const offset = (containerHeight / 2) - activeLine.offsetTop - (activeLine.clientHeight / 2);
+            
+            track.style.transform = `translateY(${offset}px)`;
+        }
+    </script>
+</body>
+</html>
